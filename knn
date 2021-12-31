@@ -1,0 +1,79 @@
+from __future__ import print_function
+from numpy import *
+# 导入科学计算包numpy和运算符模块operator
+import operator
+from scipy.spatial import KDTree
+from os import listdir
+import random
+from collections import Counter
+
+def imag2vector(filename):
+    fr = open(filename)
+    vector = zeros((1, 1024))
+    for i in range(32):
+        str = fr.readline()
+        for j in range(32):
+            vector[0, 32 * i + j] = int(str[j])
+    return vector
+
+# vec = imag2vector("data/2.KNN/testDigits/0_13.txt")
+# print(vec)
+
+def handwritingClassTest():
+    # 1. 导入训练数据
+    hwLabels = []
+    trainingFileList = listdir('data/2.KNN/trainingDigits')  # load the training set
+    m = len(trainingFileList)
+    trainingMat = zeros((m, 1024))
+    # hwLabels存储0～9对应的index位置， trainingMat存放的每个位置对应的图片向量
+    for i in range(m):
+        fileNameStr = trainingFileList[i]
+        fileStr = fileNameStr.split('.')[0]  # take off .txt
+        classNumStr = int(fileStr.split('_')[0])
+        hwLabels.append(classNumStr)
+        # 将 32*32的矩阵->1*1024的矩阵
+        trainingMat[i, :] = imag2vector('data/2.KNN/trainingDigits/%s' % fileNameStr)
+    # 2. 导入测试数据
+    testFileList = listdir('data/2.KNN/testDigits')  # iterate through the test set
+    errorCount = 0.0
+    mTest = len(testFileList)
+    for i in range(mTest):
+        fileNameStr = testFileList[i]
+        fileStr = fileNameStr.split('.')[0]  # take off .txt
+        classNumStr = int(fileStr.split('_')[0])
+        vectorUnderTest = imag2vector('data/2.KNN/testDigits/%s' % fileNameStr)
+        classifierResult = classify1(vectorUnderTest, trainingMat, hwLabels, 3)
+        print(classifierResult)
+        # print("the classifier came back with: %d, the real answer is: %d" % (classifierResult, classNumStr))
+        if (classifierResult != classNumStr): errorCount += 1.0
+    print("\nthe total number of errors is: %d" % errorCount)
+    print("\nthe total error rate is: %f" % (errorCount / float(mTest)))
+
+def classify0(inX, dataSet, label, k):
+    m = dataSet.shape[0]
+    difMat = tile(inX, (m, 1)) - dataSet
+    sqMat = difMat ** 2
+    sqSumMat = sqMat.sum(axis=1)
+    squareMat = sqSumMat ** 0.5
+
+    afterSorted = squareMat.argsort()
+    mp = {}
+    for i in range(k):
+        value = label[afterSorted[i]]
+        mp[value] = mp.get(value, 0) + 1
+    maxClassCount = max(mp, key=mp.get)
+    return maxClassCount
+
+def classify1(inX, dataSet, label, K):
+    tree = KDTree(dataSet)
+    dis, nearest_loc = tree.query(x=inX, k=K, p=2)
+    # y_test = []
+    # for i in range(nearest_loc.shape[0]):
+    classCount = {}
+    for pos in nearest_loc[0]:
+        classCount[label[pos]] = classCount.get(label[pos], 0) + 1
+    # y_test.append(sorted(classCount)[0])
+    return max(classCount,key=classCount.get)
+
+if __name__ == '__main__':
+    handwritingClassTest()
